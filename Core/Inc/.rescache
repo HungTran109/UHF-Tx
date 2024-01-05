@@ -1,0 +1,1 @@
+{"__version__":1,"totalSize":26949,"count":9,"data":{"adc.h":[0,1338],"gpio.h":[0,1400],"i2c.h":[0,1310],"iwdg.h":[0,1351],"main.h":[0,4606],"stm32l0xx_hal_conf.h":[0,11838],"stm32l0xx_it.h":[0,1834],"stm32_assert.h":[0,1945],"usart.h":[0,1327]}}
