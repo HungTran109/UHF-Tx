@@ -43,7 +43,6 @@ typedef struct
             mcu_state_t ChipState;
             uint8_t Volume;
             uint8_t IsMute;
-            uint8_t Is_Enter_Change_Freq_Mode;
         }uhf_chip_status;
         struct 
         {

@@ -293,24 +293,12 @@ static void button_init(void)
 static void button_pressed_vol_down_handler(void *args)
 {
     DEBUG_INFO("button vol down pressed\r\n");
-    if (sys_ctx()->uhf_chip_status.Is_Enter_Change_Freq_Mode == false) uhf_volume_down();
-    else 
-    {
-        LL_GPIO_SetOutputPin(LED_PWM_GPIO_Port, LED_PWM_Pin);
-        Delay_ms(50);
-        KT_MicTX_Previous_Fre();
-    }
+    uhf_volume_down();
 }
 static void button_pressed_vol_up_handler(void *args)
 {
     DEBUG_INFO("button vol up pressed\r\n");
-    if (sys_ctx()->uhf_chip_status.Is_Enter_Change_Freq_Mode == false) uhf_volume_up();
-    else 
-    {
-        LL_GPIO_SetOutputPin(LED_PWM_GPIO_Port, LED_PWM_Pin);
-        Delay_ms(50);
-        KT_MicTX_Next_Fre();
-    }
+    uhf_volume_up();
 }
 static void button_pressed_pair_handler(void *args)
 {
@@ -353,23 +341,14 @@ static void on_btn_hold(int index, int event, void* p_args)
 static void button_mute_press_so_long_handler(void *args)
 {
     DEBUG_INFO("button mute so long pressed\r\n");
-    if (sys_ctx()->uhf_chip_status.Is_Enter_Change_Freq_Mode == false)
-    {
-        sys_ctx()->uhf_chip_status.Is_Enter_Change_Freq_Mode = true;
-        KT_WirelessMicTx_PAGain(0);
-        app_led_on(0, LED_ON_FOREVER);
-    }
-    else
-    {
-        sys_ctx()->uhf_chip_status.Is_Enter_Change_Freq_Mode = false;
-        app_led_off(0);
-        hardware_enable_uhf_power(0);
-        InternalFlash_WriteConfig();
-        
-        DEBUG_INFO("System reset\r\n");
-        NVIC_SystemReset();
-//        app_led_off(0);
-    }
+    KT_WirelessMicTx_PAGain(0);
+    app_led_on(0, LED_ON_FOREVER);
+    KT_MicTX_Next_Fre();
+    hardware_enable_uhf_power(0);
+    InternalFlash_WriteConfig();
+    
+    DEBUG_INFO("System reset\r\n");
+    NVIC_SystemReset();
     //KT_MicTX_Next_Fre();
     /*Increase frequency*/
 }

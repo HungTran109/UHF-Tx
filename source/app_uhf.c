@@ -185,7 +185,7 @@ void KT_MicTX_Next_Fre(void) // ��250KHz
 //    DEBUG_INFO ("TURN ON UHF\r\n");
 //    hardware_enable_uhf_power(1);
     Memery_Frequency = Memery_Frequency + BAND_STEP;
-    if((Memery_Frequency > BAND_TOP) || (Memery_Frequency < BAND_BOTTOM))
+    if((Memery_Frequency > BAND_TOP) | (Memery_Frequency < BAND_BOTTOM))
 	{
         Memery_Frequency = BAND_BOTTOM;
 	}
@@ -307,14 +307,18 @@ static uint32_t MCU_GetInfo(void)
      /**/
      
     /*Make device frequency depend on device UUID*/
-    uint32_t caculate_Freq = BAND_BOTTOM + LL_GetUID_Word0() % 20000 +
-                                      LL_GetUID_Word1() % 20000 +
-                                      LL_GetUID_Word2() % 20000;
+    uint32_t band_space = (BAND_TOP - BAND_BOTTOM) / 3;
+    uint32_t caculate_Freq = BAND_BOTTOM + LL_GetUID_Word0() % band_space +
+                                      LL_GetUID_Word1() % band_space +
+                                      LL_GetUID_Word2() % (BAND_TOP - BAND_BOTTOM - 2 * band_space);
     if (caculate_Freq >= BAND_TOP)
     {
         caculate_Freq = BAND_TOP;
     }
+    sys_ctx()->uhf_chip_status.Frequency = caculate_Freq;
     DEBUG_INFO("Base Memory frequency:%d\r\n", caculate_Freq);
+    
+    InternalFlash_WriteConfig();
     return caculate_Freq;
 }
 

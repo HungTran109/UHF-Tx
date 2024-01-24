@@ -49,9 +49,9 @@
     #define PILOT_FREQ     32768
 #endif
 
-#define    BAND_TOP        790000
+#define    BAND_TOP        780000
 #define    BAND_BOTTOM     730000
-#define    BAND_STEP       150
+#define    BAND_STEP       250
 
 #define PA_SEL 1
 
