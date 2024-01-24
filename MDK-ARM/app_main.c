@@ -17,6 +17,7 @@
 #include <string.h>
 #include "lwrb.h"
 #include "iwdg.h"
+#include "tim.h"
 /*****************************************************************************
  * MACROS
  *****************************************************************************/
@@ -46,12 +47,14 @@
 //}button_t;
 typedef uint32_t (*p_gpio_read_pin_callback)(void);
 typedef void (*p_button_pressed_event_handler)(void *args);
+typedef void (*p_button_press_so_long_event_handler)(void *args);
  /*****************************************************************************
  * Forward Declaration
  *****************************************************************************/
 static void gpio_set(uint32_t port, uint32_t pin, uint8_t state);
 //static void gpio_reset(void);
 static void work_tick_1ms(void);
+static void work_tick_1s(void);
 static void on_btn_pressed(int index, int event, void* p_args);
 //static void on_btn_release(int index, int event, void* p_args);
 static void on_btn_hold_so_long(int index, int event, void* p_args);
@@ -67,6 +70,10 @@ static void button_pressed_vol_down_handler(void *args);
 static void button_pressed_vol_up_handler(void *args);
 static void button_pressed_pair_handler(void *args);
 static void button_pressed_mute_handler(void *args);
+static void button_mute_press_so_long_handler(void *args);
+
+void handle_data_to_send_through_IR (uint32_t data);
+
  /*****************************************************************************
  * PRIVATE Variables
  *****************************************************************************/
@@ -77,7 +84,11 @@ app_btn_hw_config_t button_hw_cfg[] =
   {2, 0, 0},
   {3, 0, 0}
 };
+static volatile uint32_t m_sys_tick = 0;
+static volatile uint32_t m_delay_ms = 0;
+
 static volatile uint32_t m_tick_1ms = 0;
+static volatile uint32_t m_tick_1s = 0;
 static volatile uint32_t m_tick_5s = 0;
 static const p_gpio_read_pin_callback m_pin_read[] = 
 {
@@ -92,6 +103,13 @@ static const p_button_pressed_event_handler m_button_press_handler[] =
     button_pressed_vol_up_handler,
     button_pressed_pair_handler,
     button_pressed_mute_handler
+};
+static const p_button_press_so_long_event_handler m_button_press_so_long_handler[] =
+{
+    NULL,
+    NULL,
+    NULL,
+    button_mute_press_so_long_handler
 }; 
  /*****************************************************************************
  * Public API
@@ -104,37 +122,14 @@ lwrb_t lwrb_cli;
 uint8_t ring_buffer[64];
 
 static bool m_cli_started = false;
-void cli_cdc_tx(uint8_t *buffer, uint32_t size);
-int cli_cdc_puts(const char *msg);
-static app_cli_cb_t m_tcp_cli =
-{
-	.puts = cli_cdc_tx,
-	.printf = cli_cdc_puts,
-	.terminate = NULL
-};
+
 void app_cli_init (void)
 {
     if (m_cli_started == false)
     {
-     m_cli_started = true;
-     app_cli_start(&m_tcp_cli);
+        m_cli_started = true;
+        app_cli_start();
     }
-//    uint8_t ch = '\0';
-////    uart_read_bytes (UART_NUM_1, &ch, 1, 100);
-//    if (ch)
-//    {
-//     app_cli_poll(ch);
-//    }
-}
-int cli_cdc_puts(const char *msg)
-{
-	uint32_t len = strlen(msg);
-//    uart_write_bytes(UART_NUM_1 ,msg, len);
-    for(uint8_t i = 0; i < len; i++)
-    {
-        LL_USART_TransmitData8(USART2, *(msg + i));
-    }
-	return len;
 }
 
  /*Indicator code start*/
@@ -298,17 +293,30 @@ static void button_init(void)
 static void button_pressed_vol_down_handler(void *args)
 {
     DEBUG_INFO("button vol down pressed\r\n");
-    uhf_volume_down();
+    if (sys_ctx()->uhf_chip_status.Is_Enter_Change_Freq_Mode == false) uhf_volume_down();
+    else 
+    {
+        LL_GPIO_SetOutputPin(LED_PWM_GPIO_Port, LED_PWM_Pin);
+        Delay_ms(50);
+        KT_MicTX_Previous_Fre();
+    }
 }
 static void button_pressed_vol_up_handler(void *args)
 {
     DEBUG_INFO("button vol up pressed\r\n");
-    uhf_volume_up();
+    if (sys_ctx()->uhf_chip_status.Is_Enter_Change_Freq_Mode == false) uhf_volume_up();
+    else 
+    {
+        LL_GPIO_SetOutputPin(LED_PWM_GPIO_Port, LED_PWM_Pin);
+        Delay_ms(50);
+        KT_MicTX_Next_Fre();
+    }
 }
 static void button_pressed_pair_handler(void *args)
 {
     DEBUG_INFO("button pair pressed\r\n");
-    KT_MicTX_Next_Fre();
+    sys_ctx()->ir_status.Enable = !sys_ctx()->ir_status.Enable;
+    //KT_MicTX_Next_Fre();
     /*Increase frequency*/
 }
 static void button_pressed_mute_handler(void *args)
@@ -342,8 +350,36 @@ static void on_btn_hold(int index, int event, void* p_args)
 {
     return;
 }
+static void button_mute_press_so_long_handler(void *args)
+{
+    DEBUG_INFO("button mute so long pressed\r\n");
+    if (sys_ctx()->uhf_chip_status.Is_Enter_Change_Freq_Mode == false)
+    {
+        sys_ctx()->uhf_chip_status.Is_Enter_Change_Freq_Mode = true;
+        KT_WirelessMicTx_PAGain(0);
+        app_led_on(0, LED_ON_FOREVER);
+    }
+    else
+    {
+        sys_ctx()->uhf_chip_status.Is_Enter_Change_Freq_Mode = false;
+        app_led_off(0);
+        hardware_enable_uhf_power(0);
+        InternalFlash_WriteConfig();
+        
+        DEBUG_INFO("System reset\r\n");
+        NVIC_SystemReset();
+//        app_led_off(0);
+    }
+    //KT_MicTX_Next_Fre();
+    /*Increase frequency*/
+}
 static void on_btn_hold_so_long(int index, int event, void* p_args)
 {
+    if(m_button_press_so_long_handler[index] != NULL)
+    {
+//        DEBUG_INFO ("INDEX:%d\r\n", index);
+        m_button_press_so_long_handler[index](NULL);
+    }
     return;
 }
 
@@ -354,26 +390,36 @@ static void on_btn_hold_so_long(int index, int event, void* p_args)
 void app_main_increase_tick()
 {
     m_tick_1ms++;
+    m_tick_1s++;
     m_tick_5s++;
     
+    ++m_sys_tick;
+    if (m_delay_ms)
+    {
+        --m_delay_ms;
+    }
+    
 }
-uint8_t read_from_lwrb [32];
+uint8_t read_from_lwrb [64];
 
 static void work_tick_1ms(void)
 {
     if(m_tick_1ms)
     {
+        
         uint8_t read_len = 0;
 //        uint8_t ch = 0;
-        memset (read_from_lwrb, 0, 32);
-        read_len = lwrb_read(&lwrb_cli, read_from_lwrb, 32);
+        memset (read_from_lwrb, 0, 64);
+        read_len = lwrb_read(&lwrb_cli, read_from_lwrb, 64);
         if (read_len)
         {
             for (uint8_t i = 0; i < read_len; i++)
             {
-                app_cli_poll(read_from_lwrb[i]);
-                LL_USART_TransmitData8(USART2, read_from_lwrb[i]);
+//                app_cli_poll(read_from_lwrb[i]);
+//                LL_USART_TransmitData8(USART2, read_from_lwrb[i]);
+                DEBUG_RAW ("%c", read_from_lwrb[i]);
             }
+            DEBUG_RAW ("\r\n");
         }
 //        uint16_t regx = KT_Bus_Read(0x25);
 //        regx = regx & (1 << 14);
@@ -390,12 +436,12 @@ static void work_tick_1ms(void)
 uint32_t sleep_count = 0;
 bool is_sleep = false; 
 static void work_tick_5s(void)
-{
-    
-    
+{    
     if(m_tick_5s > 5000)
     {
         HAL_IWDG_Refresh(&hiwdg);
+        
+        
 //        if (sleep_count++ > 3)
 //        {
 //            if (!is_sleep)
@@ -424,10 +470,9 @@ static void work_tick_5s(void)
 
         m_tick_5s = 0;
         adc_start_measure();
-        DEBUG_INFO("Board voltage monitor\r\nBattery voltage:%d\r\nBus voltage:%d\r\nHardwareVersionVoltage:%d\r\n",
+        DEBUG_INFO("Board voltage monitor\r\nBattery voltage:%d\r\nBus voltage:%d\r\n",
                                 sys_ctx()->uhf_chip_status.ChipState.adc_measurement.BatteryVoltage,
-                                sys_ctx()->uhf_chip_status.ChipState.adc_measurement.BusVoltage,
-                                sys_ctx()->uhf_chip_status.ChipState.adc_measurement.HardwareVersionVoltage);
+                                sys_ctx()->uhf_chip_status.ChipState.adc_measurement.BusVoltage);
         /*If the is 5V USB plug in -> consider enable charging*/
         if(sys_ctx()->uhf_chip_status.ChipState.adc_measurement.BusVoltage > BUS_VOLTAGE_LOW_THRESHOLD)
         {
@@ -443,6 +488,33 @@ static void work_tick_5s(void)
                 hardware_enable_charge(0);
             }
         }
+    }
+}
+
+static void work_tick_1s(void)
+{
+    if (m_tick_1s > 1500)
+    {
+        static uint16_t count_sendtime = 0;
+        if (sys_ctx()->ir_status.Enable)
+        {
+            if (++count_sendtime < 20)
+            {
+                // Send Frequency through ir
+                uint32_t ir_data = sys_ctx()->uhf_chip_status.Frequency;
+                DEBUG_INFO ("IR Send: %u\r\n", ir_data);
+                handle_data_to_send_through_IR(ir_data);
+                // blink led
+                if (count_sendtime % 2) app_led_on(0, 50);
+            }
+            else 
+            {
+                // Send 20 times then disable ir
+                count_sendtime = 0;
+                sys_ctx()->ir_status.Enable = false;
+            }
+        }
+        m_tick_1s = 0;
     }
 }
 
@@ -463,18 +535,29 @@ static bool log_protect(bool do_lock, uint32_t timeout_ms)
     return true;
 }
 
-
-
-void cli_cdc_tx(uint8_t *buffer, uint32_t size)
+void sys_increase_tick(void)
 {
-    for(uint8_t i = 0; i < size; i++)
+    ++m_sys_tick;
+    if (m_delay_ms)
     {
-        LL_USART_TransmitData8(USART2, *(buffer + i));
+        --m_delay_ms;
     }
-//	uart_write_bytes(UART_NUM_1 ,buffer, size);
 }
 
+void sys_delay_ms(uint32_t ms)
+{
+    __disable_irq();
+    m_delay_ms = ms;
+    __enable_irq();
+    while (m_delay_ms);
+}
+uint32_t sys_get_ms(void)
+{
+    return m_sys_tick;
+}
 
+//uint16_t data_receive = 0;
+void decode_nec_protocol (uint16_t* data_rev);
 /*Im so lazy so i will put this function into main.h header file*/
 void app_main(void)
 {
@@ -484,21 +567,22 @@ void app_main(void)
     InternalFlash_ReadConfig();
     button_init();    /*<Button initalize>*/
     indicator_init(); /*<led inittalize>*/
-    app_uhf_transmit(NULL);
+    app_uhf_transmit();
+
     adc_start_measure();
     lwrb_init(&lwrb_cli, ring_buffer, 64);
     app_cli_init();
-    if(sys_ctx()->uhf_chip_status.ChipState.adc_measurement.HardwareVersionVoltage > sys_ctx()->uhf_chip_status.ChipState.adc_measurement.BatteryVoltage - 100
-       &&sys_ctx()->uhf_chip_status.ChipState.adc_measurement.HardwareVersionVoltage < (sys_ctx()->uhf_chip_status.ChipState.adc_measurement.BatteryVoltage + 100))
-    {
+//    if(sys_ctx()->uhf_chip_status.ChipState.adc_measurement.HardwareVersionVoltage > sys_ctx()->uhf_chip_status.ChipState.adc_measurement.BatteryVoltage - 100
+//       &&sys_ctx()->uhf_chip_status.ChipState.adc_measurement.HardwareVersionVoltage < (sys_ctx()->uhf_chip_status.ChipState.adc_measurement.BatteryVoltage + 100))
+//    {
         sprintf(sys_ctx()->uhf_chip_status.ChipState.HardwareVersion, "%s", HARDWARE_VERSION_STR_1_0_0);
         sprintf(sys_ctx()->uhf_chip_status.ChipState.FirmwareVersion, "%s", FIRMWARE_VERSION_STR_1_0_0);
-    }
-    else
-    {
-        sprintf(sys_ctx()->uhf_chip_status.ChipState.HardwareVersion, "%s", "Unknown");
-        sprintf(sys_ctx()->uhf_chip_status.ChipState.FirmwareVersion, "%s", "Unknown");
-    }
+//    }
+//    else
+//    {
+//        sprintf(sys_ctx()->uhf_chip_status.ChipState.HardwareVersion, "%s", "Unknown");
+//        sprintf(sys_ctx()->uhf_chip_status.ChipState.FirmwareVersion, "%s", "Unknown");
+//    }
     DEBUG_INFO("UHF Lavalier Microphone Transmitter:\r\nHardware version: %s\r\nFirmware version: %s\r\n", 
                             sys_ctx()->uhf_chip_status.ChipState.HardwareVersion,
                             sys_ctx()->uhf_chip_status.ChipState.FirmwareVersion);
@@ -506,9 +590,152 @@ void app_main(void)
     while(1)
     {
         /*Doin polling api*/
+        //decode_nec_protocol(&data_receive);
+        app_cli_poll();
         work_tick_1ms();
+        work_tick_1s();
         work_tick_5s();
+    }
+}
+void generate_logic_in_us (uint8_t logic, uint32_t time_in_us)
+{
+//    uint16_t pulse_number = 0;
+//    pulse_number = down_time / 2;
+    time_in_us = time_in_us / 26;
+    uint32_t timer2_tick = 0;
+    for (uint32_t i = 0; i < time_in_us; i++)
+    {
+        get_timer_reset_now();
+        timer2_tick = get_timer_cnt_now();
+        if (!logic)
+        {
+            LL_GPIO_SetOutputPin (IR_TX_GPIO_Port, IR_TX_Pin);
+        }
         
+        while ((get_timer_cnt_now() - timer2_tick) < (13)); // 13us
+        get_timer_reset_now();
+        timer2_tick = get_timer_cnt_now();
+        if (!logic)
+        {
+            LL_GPIO_ResetOutputPin (IR_TX_GPIO_Port, IR_TX_Pin);
+        }
+        while ((get_timer_cnt_now() - timer2_tick) < (13)); // 13us
+        if (!logic)
+        {
+            LL_GPIO_SetOutputPin (IR_TX_GPIO_Port, IR_TX_Pin);
+        }
+    }
+}
+
+void handle_data_to_send_through_IR (uint32_t data)
+{
+    // NEC protocol
+    generate_logic_in_us(0, 9152);   // 9.152ms
+    generate_logic_in_us(1, 4576);   // 4.576ms
+    for (uint16_t i = 0; i < 32; i++) // 32 bits data
+    {
+        
+        if (((data >> i) & 0x0001) == 0)
+        {
+            generate_logic_in_us(0, 572);
+            generate_logic_in_us(1, 572);
+//            DEBUG_INFO ("bit%d:0\r\n", i); // khong dc in log trong nay,tru luc debug tung bit 1
+        }
+        else
+        {
+            generate_logic_in_us(0, 572);
+            generate_logic_in_us(1, 1716);
+//            DEBUG_INFO ("bit%d:1\r\n", i);
+        }
+    }
+    
+    generate_logic_in_us(0, 572);
+}
+
+typedef enum 
+{
+    LOOCKING_FOR_FRAME,
+    PREPRARE_START,
+    HANDLING_DATA,
+    CLOSE_FRAME
+} data_state_t;
+
+data_state_t data_state_now;
+
+
+void decode_nec_protocol (uint16_t* data_rev)
+{
+    static bool start_frame = false;
+    static uint16_t count_now = 0;
+    static uint16_t first_pulse_data; 
+//    uint16_t data = 0;
+    uint32_t sample_time = 0; 
+    
+    if (!start_frame)
+    {
+        if (LL_GPIO_IsInputPinSet(GPIOA, GPIO_PIN_10) == 0)
+        {
+            start_frame = true;
+            data_state_now = LOOCKING_FOR_FRAME;
+            count_now = 0;
+        }
+    }
+    else
+    {
+        count_now++;
+        switch (data_state_now)
+        {
+            case LOOCKING_FOR_FRAME:
+                if (LL_GPIO_IsInputPinSet(GPIOA, GPIO_PIN_10) == 1)
+                {
+                    sample_time = count_now / 7; // = 50
+                    *data_rev = 0;
+                    data_state_now = PREPRARE_START;
+                }
+            break;
+            case PREPRARE_START:
+                if (LL_GPIO_IsInputPinSet(GPIOA, GPIO_PIN_10)== 0)
+                {
+                    while (LL_GPIO_IsInputPinSet(GPIOA, GPIO_PIN_10) == 0);
+                    first_pulse_data = count_now;
+                    data_state_now = HANDLING_DATA;
+                }
+            break;
+            case HANDLING_DATA:
+                if (LL_GPIO_IsInputPinSet(GPIOA, GPIO_PIN_10) == 0)
+                {
+                    if (count_now - first_pulse_data < (sample_time + 1))
+                    {
+                        *data_rev = *data_rev << 1;
+                        //ghi bit 0
+                    }
+                    else if (count_now - first_pulse_data < (sample_time * 3 +1 ))
+                    {
+                        *data_rev = (*data_rev << 1) & 0x0001;
+                        // ghi bit 1
+                    }
+                    else if (count_now - first_pulse_data > (sample_time * 5 +1))
+                    {
+                        data_state_now = CLOSE_FRAME;
+                    }
+                    while (LL_GPIO_IsInputPinSet(GPIOA, GPIO_PIN_10) == 0);
+                    first_pulse_data = count_now;
+                }
+                
+            break;
+            case CLOSE_FRAME:
+                // reset trang thai
+                start_frame = false;
+                if (data_rev != 0)
+                {
+                    DEBUG_WARN ("data_receive: %d\r\n", *data_rev);
+                }
+                
+                // put out data
+            break;
+            default:
+            break;
+        }
     }
 }
 
@@ -516,7 +743,7 @@ void UART_CharReception_Callback(void)
 {
     //WE NEED POLL APP_CLI HERE
     uint8_t rev_char;
-    rev_char = LL_USART_ReceiveData8(USART2);
+//    rev_char = LL_USART_ReceiveData8(USART2);
 //    app_led_blink(0, 100, 2);
 //    app_cli_poll(rev_char);
     lwrb_write (&lwrb_cli, &rev_char, 1);

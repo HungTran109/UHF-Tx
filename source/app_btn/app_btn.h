@@ -6,7 +6,7 @@
 
 #define APP_BTN_MAX_BTN_SUPPORT                  (5) 
 #define APP_BTN_SCAN_PERIOD_MS                   ((uint32_t)50) 
-#define APP_BTN_HOLD_SO_LONG_TIME_MS             ((uint32_t)2000) 
+#define APP_BTN_HOLD_SO_LONG_TIME_MS             ((uint32_t)5000) 
 #define APP_BTN_ON_HOLD_TIME_FIRE_EVENT_MS       ((uint32_t)500) 
 #define APP_BTN_DOUBLE_CLICK_TIME_MS             ((uint32_t)2000)
 

@@ -31,13 +31,12 @@ extern "C" {
 
 #include "stm32l0xx_ll_adc.h"
 #include "stm32l0xx_ll_i2c.h"
-#include "stm32l0xx_ll_usart.h"
-#include "stm32l0xx_ll_rcc.h"
 #include "stm32l0xx_ll_system.h"
 #include "stm32l0xx_ll_gpio.h"
 #include "stm32l0xx_ll_exti.h"
 #include "stm32l0xx_ll_bus.h"
 #include "stm32l0xx_ll_cortex.h"
+#include "stm32l0xx_ll_rcc.h"
 #include "stm32l0xx_ll_utils.h"
 #include "stm32l0xx_ll_pwr.h"
 #include "stm32l0xx_ll_dma.h"
@@ -77,8 +76,8 @@ void UART_CharReception_Callback(void);
 #define LED_PWM_GPIO_Port GPIOC
 #define EN_POWER_UHF_Pin LL_GPIO_PIN_13
 #define EN_POWER_UHF_GPIO_Port GPIOC
-#define ADC_VERSION_Pin LL_GPIO_PIN_3
-#define ADC_VERSION_GPIO_Port GPIOA
+//#define ADC_VERSION_Pin LL_GPIO_PIN_3
+//#define ADC_VERSION_GPIO_Port GPIOA
 #define ADC_VBAT_Pin LL_GPIO_PIN_4
 #define ADC_VBAT_GPIO_Port GPIOA
 #define ADC_5V_Pin LL_GPIO_PIN_5
@@ -95,6 +94,10 @@ void UART_CharReception_Callback(void);
 #define BT_MUTE_GPIO_Port GPIOB
 #define BT_PAIR_Pin LL_GPIO_PIN_8
 #define BT_PAIR_GPIO_Port GPIOA
+#define IR_TX_Pin LL_GPIO_PIN_3
+#define IR_TX_GPIO_Port GPIOA
+#define IR_RX_Pin LL_GPIO_PIN_10
+#define IR_RX_GPIO_Port GPIOA
 #define EN_CHARGEB5_Pin LL_GPIO_PIN_5
 #define EN_CHARGEB5_GPIO_Port GPIOB
 #define UHF_SCL_Pin LL_GPIO_PIN_8
@@ -127,7 +130,14 @@ FLASH_Status HAL_Flash_ProgramWord(uint32_t address, uint32_t data);
 #define FLASH_COMPLETE                 HAL_OK
 
 void Delay_ms(uint32_t ms);
+
+/**
+ *  @brief      Get systick value
+ *  @retval     Current systick in ms
+ */
+uint32_t sys_get_ms(void);
 /* USER CODE END Private defines */
+
 
 #ifdef __cplusplus
 }

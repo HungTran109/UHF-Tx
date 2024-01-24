@@ -56,7 +56,7 @@ volatile static uint32_t m_tick_1ms = 0;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-
+extern TIM_HandleTypeDef htim2;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -132,6 +132,7 @@ void SysTick_Handler(void)
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
     app_main_increase_tick();
+
   /* USER CODE END SysTick_IRQn 1 */
 }
 
@@ -143,21 +144,17 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief This function handles USART2 global interrupt / USART2 wake-up interrupt through EXTI line 26.
+  * @brief This function handles TIM2 global interrupt.
   */
-void USART2_IRQHandler(void)
+void TIM2_IRQHandler(void)
 {
-  /* USER CODE BEGIN USART2_IRQn 0 */
-    if (LL_USART_IsActiveFlag_RXNE(USART2))
-    {
-        
-        UART_CharReception_Callback ();
-        
-    }
-  /* USER CODE END USART2_IRQn 0 */
-  /* USER CODE BEGIN USART2_IRQn 1 */
+  /* USER CODE BEGIN TIM2_IRQn 0 */
 
-  /* USER CODE END USART2_IRQn 1 */
+  /* USER CODE END TIM2_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim2);
+  /* USER CODE BEGIN TIM2_IRQn 1 */
+
+  /* USER CODE END TIM2_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

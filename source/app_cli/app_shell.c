@@ -1,8 +1,6 @@
 //#include <APP_SHELL_ASSERT.h>
 #include "app_shell.h"
 #include "string.h"
-#include "stdio.h"
-#include "app_debug.h"
 
 #define APP_SHELL_ASSERT(x)             while (0)
 #define KEY_ESC (0x1BU)
@@ -10,9 +8,7 @@
 
 static int32_t help_cmd(p_shell_context_t context, int32_t argc, char **argv); /*!< help command */
 
-#if SHELL_EXIT_ENABLE
 static int32_t exit_cmd(p_shell_context_t context, int32_t argc, char **argv); /*!< exit command */
-#endif
 
 static int32_t parse_line(const char *cmd, uint32_t len, char *argv[SHELL_MAX_ARGS]); /*!< parse line command */
 
@@ -26,6 +22,7 @@ static void get_history_cmd(p_shell_context_t context, uint8_t hist_pos); /*!< g
 static void auto_complete(p_shell_context_t context); /*!< auto complete command */
 #endif
 
+static uint8_t get_char(p_shell_context_t context); /*!< get a char from communication interface */
 
 
 static char *custom_str_cpy(char *dest, const char *src, int32_t count); /*!< string copy */
@@ -35,9 +32,9 @@ static char *custom_str_cpy(char *dest, const char *src, int32_t count); /*!< st
  ******************************************************************************/
 static const shell_command_context_t xhelp_cmd = {"help", "\r\n\"help\": Lists all the registered commands\r\n",
                                                      help_cmd, 0};
-#if SHELL_EXIT_ENABLE
+
 static const shell_command_context_t xexit_cmd = {"exit", "\r\n\"exit\": Exit program\r\n", exit_cmd, 0};
-#endif
+
 static shell_command_context_list_t m_registered_cmd;
 
 static char m_param_buffer[SHELL_BUFFER_SIZE];
@@ -48,25 +45,26 @@ static char m_param_buffer[SHELL_BUFFER_SIZE];
 static bool m_loop_back = false;
 void app_shell_init(p_shell_context_t context, 
                 send_data_cb_t send_cb, 
+                recv_data_cb_t recv_cb, 
                 printf_data_t shell_printf, 
                 char *prompt, 
                 bool loop_back)
 {
     APP_SHELL_ASSERT(send_cb != NULL);
+    APP_SHELL_ASSERT(recv_cb != NULL);
     APP_SHELL_ASSERT(prompt != NULL);
     APP_SHELL_ASSERT(shell_printf != NULL);
 
     /* Memset for context */
     memset(context, 0, sizeof(shell_context_struct));
     context->send_data_func = send_cb;
+    context->recv_data_func = recv_cb;
     context->printf_data_func = shell_printf;
     context->prompt = prompt;
 
     m_loop_back = loop_back;
     app_shell_register_cmd(&xhelp_cmd);
-#if SHELL_EXIT_ENABLE
     app_shell_register_cmd(&xexit_cmd);
-#endif
 }
 
 
@@ -76,27 +74,23 @@ void app_shell_set_context(p_shell_context_t context)
     m_context = context;
 }
 
-static volatile bool welcome_msg_printed = true;
-int32_t app_shell_task(uint8_t ch)
+int32_t app_shell_task()
 {
+    uint8_t ch;
     int32_t i;
 
     if (!m_context)
     {
         return -1;
     }
-    if (welcome_msg_printed == false)
+    static volatile bool printed = false;
+    if (printed == false)
     {
         m_context->exit = false;
-        char date[48];
-        sprintf(date, "%s", __DATE__);
-        m_context->printf_data_func("\r\nSHELL (build:");
-        m_context->printf_data_func(date);
-        m_context->printf_data_func("\r\n)");
-
-        // m_context->printf_data_func("Copyright (c) BYTECH JSC\r\n");
-        m_context->printf_data_func(m_context->prompt);
-        welcome_msg_printed = true;
+//        m_context->printf_data_func("\r\nSHELL (build: %s)\r\n", __DATE__);
+//        m_context->printf_data_func("Copyright (c) xxxxx JSC\r\n");
+//        m_context->printf_data_func(m_context->prompt);
+        printed = true;
     }
 
     // while (1)
@@ -105,8 +99,9 @@ int32_t app_shell_task(uint8_t ch)
         {
             return -1;
         }
+        ch = get_char(m_context);
 
-        if (ch == APP_SHELL_INVALID_CHAR) //invalid input
+        if (ch == 0xFF) //invalid input
             return 0;
 
         /* Special key */
@@ -156,9 +151,7 @@ int32_t app_shell_task(uint8_t ch)
             case 'C': /* Right key */
                 if (m_context->c_pos < m_context->l_pos)
                 {
-                    char tmp[4];
-                    sprintf(tmp, "%c", m_context->line[m_context->c_pos]);
-                    m_context->printf_data_func(tmp);
+                    m_context->printf_data_func("%c", m_context->line[m_context->c_pos]);
                     m_context->c_pos++;
                 }
                 break;
@@ -206,9 +199,8 @@ int32_t app_shell_task(uint8_t ch)
                 memmove(&m_context->line[m_context->c_pos], &m_context->line[m_context->c_pos + 1],
                         m_context->l_pos - m_context->c_pos);
                 m_context->line[m_context->l_pos] = 0;
-                m_context->printf_data_func("\b");
-                m_context->printf_data_func(&m_context->line[m_context->c_pos]);
-                m_context->printf_data_func("  \b");
+                m_context->printf_data_func("\b%s  \b", &m_context->line[m_context->c_pos]);
+
                 /* Reset position */
                 for (i = m_context->c_pos; i <= m_context->l_pos; i++)
                 {
@@ -251,7 +243,7 @@ int32_t app_shell_task(uint8_t ch)
             memmove(&m_context->line[m_context->c_pos + 1], &m_context->line[m_context->c_pos],
                     m_context->l_pos - m_context->c_pos);
             m_context->line[m_context->c_pos] = ch;
-            m_context->printf_data_func(&m_context->line[m_context->c_pos]);
+            m_context->printf_data_func("%s", &m_context->line[m_context->c_pos]);
             /* Move the cursor to new position */
             for (i = m_context->c_pos; i < m_context->l_pos; i++)
             {
@@ -262,11 +254,7 @@ int32_t app_shell_task(uint8_t ch)
         {
             m_context->line[m_context->l_pos] = ch;
             if (m_loop_back)
-            {
-                char tmp[4];
-                sprintf(tmp, "%c", ch);
-                m_context->printf_data_func(tmp);
-            }
+                m_context->printf_data_func("%c", ch);
         }
 
         ch = 0;
@@ -288,7 +276,6 @@ static int32_t help_cmd(p_shell_context_t context, int32_t argc, char **argv)
     return 0;
 }
 
-#if SHELL_EXIT_ENABLE
 static int32_t exit_cmd(p_shell_context_t context, int32_t argc, char **argv)
 {
     /* Skip warning */
@@ -296,7 +283,6 @@ static int32_t exit_cmd(p_shell_context_t context, int32_t argc, char **argv)
     context->exit = true;
     return 0;
 }
-#endif
 
 static void process_cmd(p_shell_context_t context, const char *cmd)
 {
@@ -334,10 +320,6 @@ static void process_cmd(p_shell_context_t context, const char *cmd)
                         {
                             flag = 0;
                         }
-                    }
-                    else if (argc >= 0 && tmp_cmd->expected_number_of_parameters == -1)
-                    {
-                        flag = 0;
                     }
                     else
                     {
@@ -573,4 +555,16 @@ int32_t app_shell_register_cmd(const shell_command_context_t *command_context)
         result = -1;
     }
     return result;
+}
+
+static uint8_t get_char(p_shell_context_t context)
+{
+    uint8_t ch;
+
+#if SHELL_USE_FILE_STREAM
+    ch = fgetc(context->STDIN);
+#else
+    context->recv_data_func(&ch, 1U);
+#endif
+    return ch;
 }

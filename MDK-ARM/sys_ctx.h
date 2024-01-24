@@ -19,7 +19,7 @@ typedef union
 typedef struct
 {
     struct{
-    uint16_t HardwareVersionVoltage;
+    //uint16_t HardwareVersionVoltage;
     uint16_t BatteryVoltage;
     uint16_t BusVoltage;
     uint16_t Vref;
@@ -43,7 +43,12 @@ typedef struct
             mcu_state_t ChipState;
             uint8_t Volume;
             uint8_t IsMute;
-        }uhf_chip_status;      
+            uint8_t Is_Enter_Change_Freq_Mode;
+        }uhf_chip_status;
+        struct 
+        {
+            uint8_t Enable;
+        }ir_status;        
         flash_data_t flash_data;
 }sys_ctx_t;
 

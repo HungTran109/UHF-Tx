@@ -23,18 +23,18 @@
 
 /* USER CODE BEGIN 0 */
 
-#define ADC_CHANNEL_COUNT 4
+#define ADC_CHANNEL_COUNT 3
 #define ADC_NUMBER_OF_CONVERSION_TIMES 10
-#define ADC_VERSION_INDEX   0
-#define ADC_VBAT_INDEX      1
-#define ADC_5V_INDEX        2
-#define ADC_VREF_INDEX      3
+//#define ADC_VERSION_INDEX   0
+#define ADC_VBAT_INDEX      0
+#define ADC_5V_INDEX        1
+#define ADC_VREF_INDEX      2
 
 static uint8_t m_adc_in_running = 0;
 volatile uint16_t m_adc_raw_data[ADC_CHANNEL_COUNT];
 static uint32_t m_adc_channel_info[ADC_CHANNEL_COUNT] =
 {
-    LL_ADC_CHANNEL_3,   /*Version*/
+    //LL_ADC_CHANNEL_3,   /*Version*/
     LL_ADC_CHANNEL_4,    //Vbat
     LL_ADC_CHANNEL_5, /*Vbus 5V*/
     LL_ADC_CHANNEL_VREFINT,
@@ -63,10 +63,10 @@ void MX_ADC_Init(void)
   PA4   ------> ADC_IN4
   PA5   ------> ADC_IN5
   */
-  GPIO_InitStruct.Pin = ADC_VERSION_Pin;
-  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
-  LL_GPIO_Init(ADC_VERSION_GPIO_Port, &GPIO_InitStruct);
+//  GPIO_InitStruct.Pin = ADC_VERSION_Pin;
+//  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
+//  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+//  LL_GPIO_Init(ADC_VERSION_GPIO_Port, &GPIO_InitStruct);
 
   GPIO_InitStruct.Pin = ADC_VBAT_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
@@ -187,7 +187,7 @@ void adc_isr_cb(void)
 static void adc_transfer_to_voltage()
 {
     sys_ctx()->uhf_chip_status.ChipState.adc_measurement.BatteryVoltage = (m_adc_raw_data[ADC_VBAT_INDEX] * 2 * sys_ctx()->uhf_chip_status.ChipState.adc_measurement.Vdda) / 4095;
-    sys_ctx()->uhf_chip_status.ChipState.adc_measurement.HardwareVersionVoltage = (m_adc_raw_data[ADC_VERSION_INDEX] * 2 * sys_ctx()->uhf_chip_status.ChipState.adc_measurement.Vdda) / 4095;
+    //sys_ctx()->uhf_chip_status.ChipState.adc_measurement.HardwareVersionVoltage = (m_adc_raw_data[ADC_VERSION_INDEX] * 2 * sys_ctx()->uhf_chip_status.ChipState.adc_measurement.Vdda) / 4095;
     sys_ctx()->uhf_chip_status.ChipState.adc_measurement.BusVoltage = (m_adc_raw_data[ADC_5V_INDEX] * 2 * sys_ctx()->uhf_chip_status.ChipState.adc_measurement.Vdda) / 4095;
     
     

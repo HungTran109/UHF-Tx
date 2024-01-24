@@ -14,9 +14,10 @@ void sys_ctx_init(void)
 //    m_sys_ctx.uhf_chip_status.Confirm_Count = 0;
 //    m_sys_ctx.uhf_chip_status.Confirm_Count2 = 0;
 //    m_sys_ctx.uhf_chip_status.CurrentChannelNumber = 0;
+    m_sys_ctx.uhf_chip_status.Is_Enter_Change_Freq_Mode = false;
     m_sys_ctx.uhf_chip_status.Rssi = 0xFF;
     m_sys_ctx.uhf_chip_status.Snr = 0xFF;
-    m_sys_ctx.uhf_chip_status.Frequency = 772500;//795470;//772500;
+    m_sys_ctx.uhf_chip_status.Frequency = 720000;//778500;
  
     
     m_sys_ctx.flash_data.flash_data.Channel = 0;
@@ -24,4 +25,3 @@ void sys_ctx_init(void)
 
 }
 
-  

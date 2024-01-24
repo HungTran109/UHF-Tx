@@ -49,9 +49,9 @@
     #define PILOT_FREQ     32768
 #endif
 
-#define    BAND_TOP        800000
-#define    BAND_BOTTOM     600000
-#define    BAND_STEP       250
+#define    BAND_TOP        790000
+#define    BAND_BOTTOM     730000
+#define    BAND_STEP       150
 
 #define PA_SEL 1
 
@@ -277,15 +277,16 @@
 	#define BPSK_NEW_MODE            1        //1:new mode  0:old mode
 #endif
 
+#define AUXCH_EN                1
 #define AUXDATA_EN               1        //BIT 14
-#define AUX_REG_NUM              3        //BIT 13:12
+#define AUX_REG_NUM              4        //BIT 13:12
 #define AUX_CARRY_NUM            3        //BIT 11:9    00:12bit    01:16bit    10:18bit    11:20bit
 
-#define AUX_ADDRB                0x17    //BIT 15:8
+#define AUX_ADDRB                0x12    //BIT 15:8
 #define AUX_ADDRA                0x07    //BIT 7:0
 
-#define AUX_ADDRD                0x01    //BIT 15:8
-#define AUX_ADDRC                0x00    //BIT 7:0
+#define AUX_ADDRD                0x13    //BIT 15:8
+#define AUX_ADDRC                0x27    //BIT 7:0
 
 
 //-----------------------------------------------------------------------------

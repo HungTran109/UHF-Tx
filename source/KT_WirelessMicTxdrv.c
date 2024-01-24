@@ -891,10 +891,11 @@ bool KT_WirelessMicTx_Init(void)
 
     #ifdef AUX_CH
         regx=KT_Bus_Read(0x1f);
-        KT_Bus_Write(0x1f,(regx&0x80f0)|(AUXDATA_EN << 14)|(AUX_REG_NUM << 12) |
-                     (AUX_CARRY_NUM << 9)|BPSK_NEW_MODE); 
+        KT_Bus_Write(0x1f,(regx&0x80f0)|(AUXCH_EN << 15)|(AUXDATA_EN << 14)|(AUX_REG_NUM << 12) |
+                     (AUX_CARRY_NUM << 9)|BPSK_NEW_MODE);
+ 
         KT_Bus_Write(0x20,(AUX_ADDRB << 8) | AUX_ADDRA);
-        KT_Bus_Write(0x21,(AUX_ADDRD << 8) | AUX_ADDRC);    
+        KT_Bus_Write(0x21,(AUX_ADDRD << 8) | AUX_ADDRC);   
     #endif
 
     #ifdef OTHER_RX
@@ -914,7 +915,7 @@ bool KT_WirelessMicTx_Init(void)
 
     regx=KT_Bus_Read(0x2d);
     KT_Bus_Write(0x2d,(regx&0xfff8)|3); //lofine_vref_sel=0.4v
-
+    
     #ifdef pll_unlock 
         regx = KT_Bus_Read(0x2f);                
         KT_Bus_Write(0x2f, regx|0x0080); //pll_unlock_en
@@ -928,6 +929,7 @@ bool KT_WirelessMicTx_Init(void)
 
     return(1);
 }
+
 
 //-----------------------------------------------------------------------------
 //º¯ Êý Ãû£ºKT_WirelessMicTx_Standby                                                 
@@ -1520,8 +1522,14 @@ bool KT_WirelessMicTx_Tune(int32_t Freq)
 
     regx=KT_Bus_Read(0x0d);
     regx = (regx & 0x0800) >> 11;
+    uint32_t uhf_start_ms = sys_get_ms();
     while(!regx) //wait pll ready
     {
+        if (sys_get_ms() - uhf_start_ms >= 300)
+        {
+            DEBUG_ERROR("KT_WirelessMicRx_Tune timeout\r\n");
+            break;
+        }
         regx=KT_Bus_Read(0x0d);
         regx = (regx & 0x0800) >> 11; 
     }
@@ -1564,8 +1572,14 @@ bool KT_WirelessMicTx_Tune(int32_t Freq)
     
         regx=KT_Bus_Read(0x0d);
         regx = (regx&0x0800)>>11;
+        uhf_start_ms = sys_get_ms();
         while(!regx) //wait pll ready
         {
+            if (sys_get_ms() - uhf_start_ms >= 300)
+            {
+                DEBUG_ERROR("KT_WirelessMicRx_Tune timeout\r\n");
+                break;
+            }
             regx=KT_Bus_Read(0x0d);
             regx = (regx&0x0800)>>11; 
         }

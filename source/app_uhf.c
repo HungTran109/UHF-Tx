@@ -33,20 +33,23 @@ extern uint8_t xdata IRDataCode[4];
 #endif
 
 bool temp_RF_POW_SW=0; //���书��״̬��ʱ�洢
-static void MCU_GetInfo(void);
+static uint32_t MCU_GetInfo(void);
 
 
-int app_uhf_transmit(uint32_t* freq)
+uint8_t app_uhf_transmit(void)
 {
     //uint32_t lCounter = 0x20000;
-    if (freq == NULL)
+    uint32_t freq = sys_ctx()->uhf_chip_status.Frequency;
+    if (freq == NULL | freq > BAND_TOP | freq < BAND_BOTTOM)
     {
-        MCU_GetInfo();
+        freq = MCU_GetInfo();
+        sys_ctx()->uhf_chip_status.Frequency = freq;
     }
+    hardware_enable_uhf_power(1);
+    Delay_ms(300);
     
     while(!KT_WirelessMicTx_PreInit())
     {
-
     };
     while(!KT_WirelessMicTx_Init())
     {
@@ -61,7 +64,7 @@ void set_echo_level (uint32_t level, uint32_t delay)
     KT_WirelessMicTx_ECHO(ECHO_ENABLE,level,delay);
 }
 
-void KT_MicTX_Init(uint32_t* freq)
+void KT_MicTX_Init(uint32_t freq)
 {
     if (freq == NULL)
     {
@@ -71,7 +74,7 @@ void KT_MicTX_Init(uint32_t* freq)
     else
     {
         //Memery_Frequency = sys_ctx()->uhf_chip_status.Frequency;
-        Memery_Frequency = *freq;
+        Memery_Frequency = freq;
     }
     DEBUG_INFO("Tuning to %u\r\n", Memery_Frequency);
     KT_WirelessMicTx_Tune(Memery_Frequency);
@@ -104,6 +107,8 @@ void KT_MicTX_Init(uint32_t* freq)
 
     KT_WirelessMicTx_Pilot_Fdev(PILOT_FDEV_5K);
     KT_WirelessMicTx_Pilot(PILOT_ENABLE);
+    
+    KT_WirelessMicTx_PAGain(40);
 }
 
 
@@ -133,7 +138,8 @@ void KT_MicTX_RFSwitch (void)
 
 void set_active_freq (uint32_t freq)
 {
-    if (freq > 600000 && (freq <800000)){
+    if (freq >= 600000 && (freq <=800000)){
+        DEBUG_INFO("UHF Tunning to %u", freq);
         if (freq == 772000)
         {
             app_led_blink(0, 100, 5);
@@ -147,11 +153,12 @@ void set_active_freq (uint32_t freq)
         Delay_ms(5);
         Memery_Frequency = freq;
         sys_ctx()->uhf_chip_status.Frequency = Memery_Frequency;
-        InternalFlash_WriteConfig();
+        //InternalFlash_WriteConfig();
         KT_WirelessMicTx_Tune(Memery_Frequency);
         KT_MicTX_RFSwitch();
         KT_WirelessMicTx_PASW(PA_ON);
         KT_Bus_Write(0x1F,pilotSave);//�ָ���Ƶ������
+        KT_WirelessMicTx_PAGain(1);
         Key_RF_POW_flag = 1;
     }
 }
@@ -168,27 +175,28 @@ void KT_MicTX_Next_Fre(void) // ��250KHz
 //    DEBUG_INFO ("turn off PA\r\n");
 //    Delay_ms(5);
     //Reset uhf by pull down 50us
-    hardware_enable_uhf_power(0);
-    DEBUG_INFO ("TURN OFF UHF\r\n");
-    for (uint8_t i = 0; i < 51; i++)
-    {
-        HAL_IWDG_Refresh(&hiwdg);
-        Delay_ms(1);
-    }
-    DEBUG_INFO ("TURN ON UHF\r\n");
-    hardware_enable_uhf_power(1);
+//    hardware_enable_uhf_power(0);
+//    DEBUG_INFO ("TURN OFF UHF\r\n");
+//    for (uint8_t i = 0; i < 100; i++)
+//    {
+//        HAL_IWDG_Refresh(&hiwdg);
+//        Delay_ms(1);
+//    }
+//    DEBUG_INFO ("TURN ON UHF\r\n");
+//    hardware_enable_uhf_power(1);
     Memery_Frequency = Memery_Frequency + BAND_STEP;
     if((Memery_Frequency > BAND_TOP) || (Memery_Frequency < BAND_BOTTOM))
 	{
         Memery_Frequency = BAND_BOTTOM;
 	}
-    app_uhf_transmit(&Memery_Frequency);
-//    sys_ctx()->uhf_chip_status.Frequency = Memery_Frequency;
+    //KT_WirelessMicTx_Tune(Memery_Frequency);
+    sys_ctx()->uhf_chip_status.Frequency = Memery_Frequency;
+    
 
-//    InternalFlash_WriteConfig();
+    //InternalFlash_WriteConfig();
 
 //    KT_WirelessMicTx_Tune(Memery_Frequency);
-//    DEBUG_INFO ("write tune done: %d\r\n", Memery_Frequency);
+    DEBUG_INFO ("write freq done: %d\r\n", Memery_Frequency);
 ////    KT_MicTX_RFSwitch();3
 //    KT_WirelessMicTx_PAGain(1);
 //    KT_WirelessMicTx_PASW(PA_ON);
@@ -199,29 +207,42 @@ void KT_MicTX_Next_Fre(void) // ��250KHz
 
 void KT_MicTX_Previous_Fre(void) // ��250KHz
 {
-    uint16_t pilotSave;
-	Key_RF_POW_flag = 0;
-	pilotSave=KT_Bus_Read(0x1F);	  //����Ƶ������
-	KT_WirelessMicTx_Pilot(PILOT_DISABLE);
-    KT_WirelessMicTx_PAGain(0);
-    KT_WirelessMicTx_PASW(PA_OFF);                    
-    Delay_ms(5);
-
+//    uint16_t pilotSave;
+//	Key_RF_POW_flag = 0;
+//	pilotSave=KT_Bus_Read(0x1F);	  //����Ƶ������
+//	KT_WirelessMicTx_Pilot(PILOT_DISABLE);
+//    KT_WirelessMicTx_PAGain(0);
+//    KT_WirelessMicTx_PASW(PA_OFF);                    
+//    Delay_ms(5);
+//    hardware_enable_uhf_power(0);
+//    DEBUG_INFO ("TURN OFF UHF\r\n");
+//    for (uint8_t i = 0; i < 100; i++)
+//    {
+//        HAL_IWDG_Refresh(&hiwdg);
+//        Delay_ms(1);
+//    }
+//    DEBUG_INFO ("TURN ON UHF\r\n");
+//    hardware_enable_uhf_power(1);
     Memery_Frequency = Memery_Frequency - BAND_STEP;
     if((Memery_Frequency > BAND_TOP) || (Memery_Frequency < BAND_BOTTOM))
 	{
         Memery_Frequency = BAND_TOP;
     }
+    
+    //KT_WirelessMicTx_Tune(Memery_Frequency);
+    //set_active_freq(Memery_Frequency);
     sys_ctx()->uhf_chip_status.Frequency = Memery_Frequency;
-    InternalFlash_WriteConfig();
+    DEBUG_INFO ("write freq done: %d\r\n", Memery_Frequency);
+    //InternalFlash_WriteConfig();
     
-    KT_WirelessMicTx_Tune(Memery_Frequency);
     
-    KT_MicTX_RFSwitch();
-    KT_WirelessMicTx_PASW(PA_ON);
-    
-	KT_Bus_Write(0x1F, pilotSave);//�ָ���Ƶ������
-    Key_RF_POW_flag = 1;
+//    KT_WirelessMicTx_Tune(Memery_Frequency);
+//    
+//    KT_MicTX_RFSwitch();
+//    KT_WirelessMicTx_PASW(PA_ON);
+//    
+//	KT_Bus_Write(0x1F, pilotSave);//�ָ���Ƶ������
+//    Key_RF_POW_flag = 1;
 }
 
 void KT_MicTX_Mute(bool mute)
@@ -247,7 +268,7 @@ void KT_MicTX_Mute(bool mute)
   * @param  None
   * @retval None
   */
-static void MCU_GetInfo(void)
+static uint32_t MCU_GetInfo(void)
 {
     uint8_t aShowDeviceID[30]    = {0};
     uint8_t aShowRevisionID[30]  = {0};
@@ -255,39 +276,46 @@ static void MCU_GetInfo(void)
     uint8_t aShowUIDWord1[32]    = {0};
     uint8_t aShowUIDWord2[32]    = {0};
   /* Display Device ID in string format*/
-      sprintf((char*)aShowDeviceID,"Device ID = 0x%lX", (unsigned long)LL_DBGMCU_GetDeviceID());
-      
-      /* Display Revision ID in string format */
-      sprintf((char*)aShowRevisionID,"Revision ID = 0x%lX", (unsigned long)LL_DBGMCU_GetRevisionID());
+    sprintf((char*)aShowDeviceID,"Device ID = 0x%lX", (unsigned long)LL_DBGMCU_GetDeviceID());
 
-      /* Display UID Word0 */
-      sprintf((char*)aShowUIDWord0,"UID Word0 = 0x%lX", (unsigned long)LL_GetUID_Word0());
-      
-      /* Display UID Word1 */
-      sprintf((char*)aShowUIDWord1,"UID Word1 = 0x%lX", (unsigned long)LL_GetUID_Word1());
-      
-      /* Display UID Word2 */
-      sprintf((char*)aShowUIDWord2,"UID Word2 = 0x%lX", (unsigned long)LL_GetUID_Word2());
-    
-      DEBUG_INFO("%s\r\n%s\r\n%s\r\n%s\r\n%s\r\n", aShowDeviceID
-                                                                                 , aShowRevisionID
-                                                                                 , aShowUIDWord0
-                                                                                 , aShowUIDWord1
-                                                                                 , aShowUIDWord2);
-     uint16_t last_UUID_word = (uint16_t)LL_GetUID_Word2();
-     last_UUID_word = last_UUID_word / 82;
-     if(last_UUID_word >= 800)  /*(800-600) /2.5*/
-     {
-         Memery_Frequency = BAND_BOTTOM + last_UUID_word * BAND_STEP;
-     }
-     if(Memery_Frequency >= BAND_TOP)
-     {
-        Memery_Frequency = BAND_TOP;
-     }
-     DEBUG_INFO("Base Memory frequency:%d\r\n", Memery_Frequency);
+    /* Display Revision ID in string format */
+    sprintf((char*)aShowRevisionID,"Revision ID = 0x%lX", (unsigned long)LL_DBGMCU_GetRevisionID());
+
+    /* Display UID Word0 */
+    sprintf((char*)aShowUIDWord0,"UID Word0 = 0x%lX", (unsigned long)LL_GetUID_Word0());
+
+    /* Display UID Word1 */
+    sprintf((char*)aShowUIDWord1,"UID Word1 = 0x%lX", (unsigned long)LL_GetUID_Word1());
+
+    /* Display UID Word2 */
+    sprintf((char*)aShowUIDWord2,"UID Word2 = 0x%lX", (unsigned long)LL_GetUID_Word2());
+
+    DEBUG_INFO("%s\r\n%s\r\n%s\r\n%s\r\n%s\r\n", aShowDeviceID
+                                                                             , aShowRevisionID
+                                                                             , aShowUIDWord0
+                                                                             , aShowUIDWord1
+                                                                             , aShowUIDWord2);
+//     last_UUID_word = last_UUID_word / 82;
+//     if(last_UUID_word >= 800)  /*(800-600) /2.5*/
+//     {
+//         Memery_Frequency = BAND_BOTTOM + last_UUID_word * BAND_STEP;
+//     }
+//     if(Memery_Frequency >= BAND_TOP)
+//     {
+//        Memery_Frequency = BAND_TOP;
+//     }
      /**/
      
     /*Make device frequency depend on device UUID*/
+    uint32_t caculate_Freq = BAND_BOTTOM + LL_GetUID_Word0() % 20000 +
+                                      LL_GetUID_Word1() % 20000 +
+                                      LL_GetUID_Word2() % 20000;
+    if (caculate_Freq >= BAND_TOP)
+    {
+        caculate_Freq = BAND_TOP;
+    }
+    DEBUG_INFO("Base Memory frequency:%d\r\n", caculate_Freq);
+    return caculate_Freq;
 }
 
 void KT_Enter_STANDBY_Mode (void)

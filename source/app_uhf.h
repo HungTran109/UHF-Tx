@@ -211,12 +211,12 @@ void KT_MicTX_RFSwitch (void);
 void KT_MicTX_Next_Fre (void); 
 void KT_MicTX_Previous_Fre (void); 
 void KT_MicTX_Mute (bool mute); 
-void KT_MicTX_Init(uint32_t* freq);
+void KT_MicTX_Init(uint32_t freq);
 
 void KT_Enter_STANDBY_Mode (void);
 void KT_Exit_STANDBY_Mode (void);
 
-int app_uhf_transmit(uint32_t* freq);
+uint8_t app_uhf_transmit(void);
 void set_echo_level (uint32_t level, uint32_t delay);
 void set_active_freq (uint32_t freq);
 #endif

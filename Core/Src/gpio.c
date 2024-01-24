@@ -62,6 +62,9 @@ void MX_GPIO_Init(void)
   LL_GPIO_ResetOutputPin(EN_ADC_GPIO_Port, EN_ADC_Pin);
 
   /**/
+  LL_GPIO_ResetOutputPin(IR_TX_GPIO_Port, IR_TX_Pin);
+
+  /**/
   LL_GPIO_ResetOutputPin(EN_CHARGEB5_GPIO_Port, EN_CHARGEB5_Pin);
 
   /**/
@@ -127,6 +130,20 @@ void MX_GPIO_Init(void)
   LL_GPIO_Init(BT_PAIR_GPIO_Port, &GPIO_InitStruct);
 
   /**/
+  GPIO_InitStruct.Pin = IR_TX_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(IR_TX_GPIO_Port, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = IR_RX_Pin;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
+  LL_GPIO_Init(IR_RX_GPIO_Port, &GPIO_InitStruct);
+
+  /**/
   GPIO_InitStruct.Pin = EN_CHARGEB5_Pin;
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
@@ -139,7 +156,7 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
   LL_GPIO_Init(UHF_SCL_GPIO_Port, &GPIO_InitStruct);
 
   /**/
@@ -147,7 +164,7 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
   GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
   GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_UP;
   LL_GPIO_Init(UHF_SDA_GPIO_Port, &GPIO_InitStruct);
 
 }
@@ -169,11 +186,11 @@ void hardware_enable_uhf_power(uint8_t en)
 {
     if(en)
     {
-        LL_GPIO_SetOutputPin(EN_POWER_UHF_GPIO_Port, EN_POWER_UHF_Pin);
+        LL_GPIO_ResetOutputPin(EN_POWER_UHF_GPIO_Port, EN_POWER_UHF_Pin);
     }
     else
     {
-        LL_GPIO_ResetOutputPin(EN_POWER_UHF_GPIO_Port, EN_POWER_UHF_Pin);
+        LL_GPIO_SetOutputPin(EN_POWER_UHF_GPIO_Port, EN_POWER_UHF_Pin);
     }
     return ;
 }
