@@ -66,6 +66,7 @@ void set_echo_level (uint32_t level, uint32_t delay)
 
 void KT_MicTX_Init(uint32_t freq)
 {
+    uint32_t Memery_Frequency = BAND_BOTTOM;
     if (freq == NULL)
     {
         Memery_Frequency = sys_ctx()->uhf_chip_status.Frequency;
@@ -108,7 +109,7 @@ void KT_MicTX_Init(uint32_t freq)
     KT_WirelessMicTx_Pilot_Fdev(PILOT_FDEV_5K);
     KT_WirelessMicTx_Pilot(PILOT_ENABLE);
     
-    KT_WirelessMicTx_PAGain(40);
+    KT_WirelessMicTx_PAGain(62);
 }
 
 
@@ -151,10 +152,9 @@ void set_active_freq (uint32_t freq)
         KT_WirelessMicTx_PAGain(0);
         KT_WirelessMicTx_PASW(PA_OFF);                        
         Delay_ms(5);
-        Memery_Frequency = freq;
-        sys_ctx()->uhf_chip_status.Frequency = Memery_Frequency;
+        sys_ctx()->uhf_chip_status.Frequency = freq;
         //InternalFlash_WriteConfig();
-        KT_WirelessMicTx_Tune(Memery_Frequency);
+        KT_WirelessMicTx_Tune(freq);
         KT_MicTX_RFSwitch();
         KT_WirelessMicTx_PASW(PA_ON);
         KT_Bus_Write(0x1F,pilotSave);//�ָ���Ƶ������
@@ -184,6 +184,7 @@ void KT_MicTX_Next_Fre(void) // ��250KHz
 //    }
 //    DEBUG_INFO ("TURN ON UHF\r\n");
 //    hardware_enable_uhf_power(1);
+    uint32_t Memery_Frequency = sys_ctx()->uhf_chip_status.Frequency;
     Memery_Frequency = Memery_Frequency + BAND_STEP;
     if((Memery_Frequency > BAND_TOP) | (Memery_Frequency < BAND_BOTTOM))
 	{
@@ -223,6 +224,7 @@ void KT_MicTX_Previous_Fre(void) // ��250KHz
 //    }
 //    DEBUG_INFO ("TURN ON UHF\r\n");
 //    hardware_enable_uhf_power(1);
+    uint32_t Memery_Frequency = sys_ctx()->uhf_chip_status.Frequency;
     Memery_Frequency = Memery_Frequency - BAND_STEP;
     if((Memery_Frequency > BAND_TOP) || (Memery_Frequency < BAND_BOTTOM))
 	{

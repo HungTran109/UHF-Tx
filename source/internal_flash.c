@@ -148,7 +148,7 @@ void InternalFlash_ReadConfig(void)
         
         sys_ctx()->uhf_chip_status.Frequency = *(__IO uint32_t*)CONFIG_FREQ_PAIR;
         DEBUG_INFO ("read freq %d\r\n", sys_ctx()->uhf_chip_status.Frequency);
-        //sys_ctx()->uhf_chip_status.Frequency = 730000;
+        //sys_ctx()->uhf_chip_status.Frequency = 770000;
 //         sys_ctx()->uhf_chip_status.CurrentChannelNumber = *(__IO uint32_t*)
     }
 }

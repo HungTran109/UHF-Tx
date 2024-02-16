@@ -44,11 +44,11 @@
 //-----------------------------------------------------------------------------
 // Global VARIABLES
 //-----------------------------------------------------------------------------
-static uint32_t  Memery_Frequency; //����Ƶ����Ϣ 
-static uint32_t  Load_Frequency;   //flash���汣���Ƶ����Ϣ
+//static uint32_t  Memery_Frequency; //����Ƶ����Ϣ 
+//static uint32_t  Load_Frequency;   //flash���汣���Ƶ����Ϣ
 //static uint8_t VOLUME = 6;
-static uint8_t Key_UP_flag = 0;    //���������������ϼӱ�־״̬
-static uint8_t Key_DOWN_flag = 0;  //���������������¼���־״̬
+//static uint8_t Key_UP_flag = 0;    //���������������ϼӱ�־״̬
+//static uint8_t Key_DOWN_flag = 0;  //���������������¼���־״̬
 static uint8_t Key_RF_POW_flag = 1; //�����л��Ƿ�ȥ����־
 //static bool temp_RF_POW_SW=0;
 

@@ -223,28 +223,28 @@ static void uhf_volume_down(void)
 {
     //sys_ctx()->uhf_chip_status.Volume = sys_ctx()->uhf_chip_status.Volume 
     
-    if(sys_ctx()->uhf_chip_status.Volume == 0)
-    {
-        sys_ctx()->uhf_chip_status.Volume = 0;
-    }
-    else
-    {
-        sys_ctx()->uhf_chip_status.Volume = sys_ctx()->uhf_chip_status.Volume - 2;
-    }
-    uint8_t reg_val = (uint8_t)sys_ctx()->uhf_chip_status.Volume / 2;
-    DEBUG_INFO("Volume down: %d\r\n", reg_val);
-    KT_WirelessMicTx_PAGain(reg_val);
+//    if(sys_ctx()->uhf_chip_status.Volume == 0)
+//    {
+//        sys_ctx()->uhf_chip_status.Volume = 0;
+//    }
+//    else
+//    {
+//        sys_ctx()->uhf_chip_status.Volume = sys_ctx()->uhf_chip_status.Volume - 2;
+//    }
+//    uint8_t reg_val = (uint8_t)sys_ctx()->uhf_chip_status.Volume / 2;
+//    DEBUG_INFO("Volume down: %d\r\n", reg_val);
+//    KT_WirelessMicTx_PAGain(reg_val);
 }
 static void uhf_volume_up(void)
 {
-    sys_ctx()->uhf_chip_status.Volume = sys_ctx()->uhf_chip_status.Volume + 2;
-    if(sys_ctx()->uhf_chip_status.Volume >= 100)
-    {
-        sys_ctx()->uhf_chip_status.Volume = 100;
-    }
-    uint8_t reg_val = (uint8_t)sys_ctx()->uhf_chip_status.Volume / 2;
-    DEBUG_INFO("Volume up: %d\r\n", reg_val);
-    KT_WirelessMicTx_PAGain(reg_val);
+//    sys_ctx()->uhf_chip_status.Volume = sys_ctx()->uhf_chip_status.Volume + 2;
+//    if(sys_ctx()->uhf_chip_status.Volume >= 100)
+//    {
+//        sys_ctx()->uhf_chip_status.Volume = 100;
+//    }
+//    uint8_t reg_val = (uint8_t)sys_ctx()->uhf_chip_status.Volume / 2;
+//    DEBUG_INFO("Volume up: %d\r\n", reg_val);
+//    KT_WirelessMicTx_PAGain(reg_val);
 }
 
 static uint32_t btn_read(uint32_t pin)
